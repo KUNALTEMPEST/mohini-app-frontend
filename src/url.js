@@ -7,6 +7,7 @@ const ROUTES = {
   SHIKSHALOKAM_GUEST_VOICE_CHAT: "/guest-chat",
   TERMS_AND_CONDITIONS: "/tnc",
   EXIT_ROUTE: "/exit",
+  CHAUPAL_LOGIN_ROUTE: "/guest-login",
 };
 
 export default ROUTES;

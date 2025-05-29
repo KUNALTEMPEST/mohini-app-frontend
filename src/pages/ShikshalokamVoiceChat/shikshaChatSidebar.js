@@ -8,7 +8,8 @@ import { FaArrowLeft, FaPowerOff } from "react-icons/fa6";
 import "./shikshaChatStyle.css"
 import { useTranslation } from "react-i18next";
 import { setLanguage } from "../../i18n";
-import { languageList } from "./enum";
+import { languageList, sessionFlowName } from "./enum";
+import { getFromStorage, setInStorage } from "../../services/storage_service";
 
 
 const Sidebar = ({ 
@@ -44,7 +45,10 @@ const Sidebar = ({
                 : <MdMenu className="icon-5" />}
             </button>
           </div>
-          {!!isOpen && (
+          {(!!isOpen && 
+            getFromStorage('flow', false) && 
+            ![sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))
+          ) && (
             <div className="div23">
               <div className="div65 div24">
                 <p>{t('allMicroImprovement')}</p>
@@ -55,6 +59,7 @@ const Sidebar = ({
                   onClick={(e)=>{
                     setIsResetCalled(true);
                     if (showGuestPopup) {
+                      setInStorage('local_route', JSON.stringify('en'), sessionFlowName.GuestDiscussion);
                       showGuestPopup();
                     } else {
                       resetChat(e)
@@ -78,7 +83,14 @@ const Sidebar = ({
         {!!isOpen && showLogout && (
           <div className="div66">
             <button className="button-5"
-              onClick={handleLogout}
+              onClick={()=>{
+                const flowName = getFromStorage('flow', false);
+                if (showGuestPopup && flowName&& [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(flowName)) {
+                  showGuestPopup(null, null, true);
+                } else {
+                  handleLogout()
+                }
+              }}
             >
               <FaPowerOff className="icon-6 icon-2" /> {t('logout')}
             </button>

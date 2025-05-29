@@ -1,0 +1,10 @@
+.speaker-off-button {
+    background-color: #f9fafb;
+    border-radius: 9999px;
+    color: #040303 !important;
+    font-size: 1.2rem;
+}
+
+.speaker-div {
+    vertical-align: middle;
+}

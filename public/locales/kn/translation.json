@@ -86,5 +86,18 @@
     "tncText3": "ಸ್ವೀಕರಿಸುತ್ತೀರಿ",
     "challengesHeader": "ಸವಾಲುಗಳು",
     "solutionsHeader": "ಪರಿಹಾರಗಳು",
-    "photosLimitMsg": "ನೀವು ಗರಿಷ್ಠ 10 ಚಿತ್ರಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಬಹುದು."
+    "photosLimitMsg": "ನೀವು ಗರಿಷ್ಠ 10 ಚಿತ್ರಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಬಹುದು.",
+    "welcome_paragraph2": "ನಾನು ಮಿತ್ರ, ನಿಮ್ಮ ಶಿಕ್ಷಾ ಚೌಪಾಲ್‌ನ ಮಹತ್ವದ ಚರ್ಚೆಗಳನ್ನು ದಾಖಲಿಸಲು ಇಲ್ಲಿದ್ದೇನೆ.",
+    "phoneNumberQuestion": "ನೀವು ನಿಮ್ಮ ಫೋನ್ ಸಂಖ್ಯೆ ಹೇಳಬಹುದೇ?",
+    "nameQuestion": "ನೀವು ನಿಮ್ಮ ಹೆಸರು ಹೇಳಬಹುದೇ?",
+    "stateQuestion": "ಚರ್ಚೆ ನಡೆದ ರಾಜ್ಯದ ಹೆಸರನ್ನು ಹಂಚಿಕೊಳ್ಳಿ.",
+    "districtQuestion": "ಚರ್ಚೆ ನಡೆದ ಜಿಲ್ಲೆಯ ಹೆಸರನ್ನು ಹಂಚಿಕೊಳ್ಳಿ.",
+    "organizationQuestion": "ನೀವು ಯಾವ ಸಂಸ್ಥೆ ಅಥವಾ ಫೆಡರೇಶನ್‌ನ ಭಾಗವಿದ್ದೀರಿ?",
+    "numberOfPeopleQuestion": "ಚರ್ಚೆಯಲ್ಲಿ ಎಷ್ಟು ಜನರು ಭಾಗವಹಿಸಿದ್ದರು?",
+    "dateDiscussionQuestion": "ಚರ್ಚೆ ಯಾವ ದಿನಾಂಕದಲ್ಲಿ ನಡೆಯಿತು?",
+    "nameQuestionPlaceholder": "ನಿಮ್ಮ ಹೆಸರು",
+    "organizationPlaceholder": "ಮೌಲ್ಯ",
+    "numberOfPeoplePlaceholder": "ಮೌಲ್ಯ",
+    "dateQuestionPlaceholder": "ದಿನಾಂಕ/ತಿಂಗಳು/ವರ್ಷ",
+    "continueButton": "ಮುಂದುವರಿಸಿ"
 }

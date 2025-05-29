@@ -86,5 +86,18 @@
     "tncText3": "",
     "challengesHeader": "సవాళ్లు",
     "solutionsHeader": "పరిష్కారాలు",
-    "photosLimitMsg": "మీరు గరిష్ఠంగా 10 చిత్రాలు అప్‌లోడ్ చేయవచ్చు."
+    "photosLimitMsg": "మీరు గరిష్ఠంగా 10 చిత్రాలు అప్‌లోడ్ చేయవచ్చు.",
+    "welcome_paragraph2": "నేను మిత్ర, మీ శిక్షా చౌపాల్‌లో జరిగిన ముఖ్యమైన చర్చలను నమోదు చేయడానికి ఉన్నాను.",
+    "phoneNumberQuestion": "మీరు మీ ఫోన్ నంబర్ చెప్పగలరా?",
+    "nameQuestion": "మీరు మీ పేరు చెప్పగలరా?",
+    "stateQuestion": "చర్చ జరిగిన రాష్ట్రం పేరును చెప్పండి.",
+    "districtQuestion": "చర్చ జరిగిన జిల్లాను చెప్పండి.",
+    "organizationQuestion": "మీరు ఏ సంస్థ లేదా ఫెడరేషన్‌లో భాగమయ్యారు?",
+    "numberOfPeopleQuestion": "ఈ చర్చలో ఎంతమంది పాల్గొన్నారు?",
+    "dateDiscussionQuestion": "ఈ చర్చ ఏ తేదీన జరిగింది?",
+    "nameQuestionPlaceholder": "మీ పేరు",
+    "organizationPlaceholder": "విలువ",
+    "numberOfPeoplePlaceholder": "విలువ",
+    "dateQuestionPlaceholder": "తేదీ/నెల/సంవత్సరం",
+    "continueButton": "కొనసాగించండి"
 }

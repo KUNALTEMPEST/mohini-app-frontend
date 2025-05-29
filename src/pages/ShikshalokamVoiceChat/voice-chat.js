@@ -23,7 +23,7 @@ import rehypeRaw from 'rehype-raw';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { BiLoader } from "react-icons/bi";
 import { AiOutlineEye } from "react-icons/ai";
-import { getSessionDetails } from "../../services/api.service";
+import { getSessionDetails, transliterateApi } from "../../services/api.service";
 import Sidebar from "./shikshaChatSidebar";
 import MainHeader from "./shikshaChatHeader";
 import { HiMiniSpeakerWave, HiMiniSpeakerXMark } from "react-icons/hi2";
@@ -56,6 +56,8 @@ import { toast } from "react-toastify";
 import { languageList, sessionFlowName } from "./enum";
 import PrivacyPolicyPopup from "../../components/TnC/privacyPolicyPopup";
 import { FaCircle } from "react-icons/fa6";
+import { clearFromStorage, getFromStorage, handleS3Upload, removeFromStorage, setInStorage } from "../../services/storage_service";
+import { isSilentAudio } from "../../services/audio_service";
 
 
 const cookies = new Cookies();
@@ -866,10 +868,9 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
     if (currentFlow && [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(currentFlow)) {
       removeFromStorage('route');
       removeFromStorage('intro_message');
-
       setSelectedLanguage("en");
       setInStorage('lang_progress', null, currentFlow);
-      removeFromStorage('has_accepted_tnc');
+      setInStorage('has_accepted_tnc', true, currentFlow);
     } else{
       setInStorage('has_accepted_tnc', true, currentFlow);
     }
@@ -1072,7 +1073,7 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
     }, 1000);
   }
 
-  function showGuestPopup(wantToNavigateBack, executeCustomFunction) {
+  function showGuestPopup(wantToNavigateBack, executeCustomFunction, isLogout=false) {
     <div className="div-popup">
     {Swal.fire({
       title: t('guestPopUpChanges'),
@@ -1096,8 +1097,19 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
               [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))
             ){
               removeFromStorage('botName');
+              if(isLogout){
+                if(stopAllAudio){
+                  stopAllAudio();
+                }
+                setLanguage(languageList[0].value);
+                setInStorage('local_route', JSON.stringify(languageList[0].value));
+                navigate(ROUTES.CHAUPAL_LOGIN_ROUTE);
+                return;
+              }
             }
-            ResetChat();
+            if(!isLogout){
+              ResetChat();
+            }
           }
         }
       } else {
@@ -1406,6 +1418,17 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
               setInStorage('selected_type', JSON.stringify(sessionInfo[0]?.session_type));
               setSelectedType(sessionInfo[0]?.session_type)
             }
+          }
+        }
+        if(currentFlow && [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(currentFlow)){
+          const originalName = getFromStorage('english_first_name', false);
+          if(originalName && originalName !== ''){
+            firstName = originalName;
+          }
+          const transliteratedFirstName = await transliterateApi(firstName, 'en', languageToUse, storedRoute);
+          if(transliteratedFirstName && transliteratedFirstName!==''){
+            firstName = transliteratedFirstName.replace(/^["']|["']$/g, '');
+      			setInStorage('first_name', JSON.stringify(firstName), sessionFlowName.GuestDiscussion);
           }
         }
         if (message && firstName) {
@@ -2313,18 +2336,6 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
     }
   };
 
-  const isSilentAudio = async (blob, silenceThreshold = 0.01) => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    const rawData = audioBuffer.getChannelData(0);
-  
-    const rms = Math.sqrt(rawData.reduce((acc, val) => acc + val * val, 0) / rawData.length);
-    console.log("RMS (volume):", rms);
-  
-    return rms < silenceThreshold;
-  };
-
   const startRecording = () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       handleOnStopSpeaking()
@@ -2343,7 +2354,6 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
   
           recorder.start();
           setHasStartedRecording(true);
-          
   
           recorder.ondataavailable = (event) => {
             localAudioChunks.push(event.data);
@@ -2354,9 +2364,9 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
             
             if (localAudioChunks.length > 0) {
               const audioBlob = new Blob(localAudioChunks, { type: 'audio/webm;codecs=opus' });
-              const isSilent = await isSilentAudio(audioBlob, 0.02);
+              // const isSilent = await isSilentAudio(audioBlob, 0.02);
 
-              if (!audioBlob || isSilent) {
+              if (!audioBlob) {
                 showNotification({
                   message: t('asrError'),
                   type: "error",
@@ -2371,7 +2381,10 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
 
               setIsFetchingData(true);
               let transcriptResult = '';
-              let s3Url = await handleS3Upload(audioBlob, `${getFromStorage('sessionid', true)}-${Date.now()}`, 'chatbot/companychat/');
+              let s3Url = await handleS3Upload(
+                audioBlob, `${getFromStorage('sessionid', true)}-${Date.now()}`, 'chatbot/companychat/', 
+                storyData
+              );
               if(!s3Url || s3Url === '') {
                 transcriptResult = t('asrError');
               }
@@ -2590,34 +2603,6 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
     return jpgFile;
   };
   
-  const handleS3Upload = async (file, fileName, folderStructure) => {
-    try{
-      const res = await axiosInstance.post("api/get-presigned-url/", {
-        fileName: fileName,
-        fileType: file.type,
-        storyId: storyData?.id,
-        folder_structure: folderStructure
-      });
-  
-      const { uploadUrl, s3Url } = res.data;
-  
-      await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type,
-          "x-amz-acl": "public-read"
-        },
-        body: file,
-      });
-      return s3Url;
-    } catch (error) {
-      console.error("Error uploading to S3:", error);
-      return '';
-    }
-    
-  }
-  
-
   const handleMultipleUploads = async (e, storyData) => {
     const filesArray = Array.from(e.target.files);
     const currentFiles = [...files];
@@ -2657,7 +2642,7 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
           file = await convertHeifToJpg(file);
         }
         
-        const s3Url = await handleS3Upload(file, fileName, 'chatbot/storymedia/');
+        const s3Url = await handleS3Upload(file, fileName, 'chatbot/storymedia/', storyData);
   
         const formData = {
           file_url: s3Url,
@@ -2715,7 +2700,7 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
         <PrivacyPolicyPopup tncText={t('tncText')} onAccept={handleAcceptTnC} />
       }
       {(acceptedTnc==="ONGOING" && !isLoading && getFromStorage('flow', false) && 
-        [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))
+        [sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))
       )&& 
         <PrivacyPolicyPopup 
           tncText="**उपयोग की शर्तें और नियम**<br/><br/>स्वागत है! कृपया हमारे प्लेटफॉर्म का उपयोग करने से पहले इन शर्तों और नियमों को ध्यानपूर्वक पढ़ें। सामग्री अपलोड करके और बोट के साथ इंटरैक्ट करके, आप नीचे उल्लिखित नियमों का पालन करने के लिए सहमति देते हैं। इनका पालन न करने पर प्रतिबंधित उपयोग या कानूनी परिणाम हो सकते हैं।<br/><br/><h4 style='font-weight: bold'>1. प्लेटफॉर्म का उद्देश्य</h4>हमारा प्लेटफॉर्म उपयोगकर्ताओं को यह करने की अनुमति देता है:<br/>- विशिष्ट कार्यों या उद्देश्यों के लिए चित्र अपलोड करना।<br/>- बोट के साथ इंटरैक्ट करके सहायता प्राप्त करना, जानकारी प्रदान करना, या कार्य पूरा करना।<br/><br/><h4 style='font-weight: bold'>2. उपयोगकर्ता की जिम्मेदारियाँ</h4>प्लेटफॉर्म का उपयोग करते समय, आप सहमति देते हैं कि आप:<br/>- केवल सही और संबंधित चित्र अपलोड करेंगे जो कार्य के लिए आवश्यक हैं।<br/>- झूठी, भ्रामक या अनुपयुक्त सामग्री साझा करने से बचेंगे।<br/>- सुनिश्चित करेंगे कि सभी चित्र और संवाद लागू कानूनों और नैतिक मानकों के अनुरूप हों।<br/>- बोट और प्लेटफॉर्म के साथ सम्मानपूर्वक व्यवहार करेंगे, अपशब्दों का उपयोग करने या हानिकारक गतिविधियों में संलिप्त होने से बचेंगे।<br/><br/><h4 style='font-weight: bold'>3. निषिद्ध क्रियाएँ</h4>उपयोगकर्ताओं को सख्त रूप से निम्नलिखित कार्यों से रोका गया है:<br/>- बिना उचित अनुमति के अवैध, अश्लील या कॉपीराइट सामग्री अपलोड करना।<br/>- ऐसी चित्रों या सामग्री को साझा करना जो आपत्तिजनक, हानिकारक या दूसरों के अधिकारों का उल्लंघन करती हो।<br/>- प्लेटफॉर्म का उपयोग करके किसी व्यक्ति या संस्था को उत्पीड़ित करना, धोखाधड़ी करना या हानि पहुँचाना।<br/><br/><h4 style='font-weight: bold'>4. निगरानी और प्रवर्तन</h4>आपके द्वारा बोट के साथ किए गए इंटरैक्शन, अपलोड किए गए चित्र एवं इंटरेक्शन के बाद बोट द्वारा बनाई गई रिपोर्ट एडमिनिस्ट्रेटर या प्रोग्राम मैनेजर के साथ साझा किया जा सकता है। प्रोग्राम मैनेजर या एडमिनिस्ट्रेटर इसका उपयोग सावधानी एवं समझदारी से केवल प्रोग्राम के लिए और उसके दायरे में ही प्रयोग करेंगे । एक सुरक्षित और सम्मानजनक वातावरण बनाए रखने के लिए:<br/>- प्लेटफॉर्म पर अपलोड किए गए चित्रों और चैट इंटरैक्शन की निगरानी कर सकता है ताकि यह सुनिश्चित किया जा सके कि इन शर्तों का पालन हो रहा है।<br/>- किसी भी उल्लंघन के परिणामस्वरूप प्लेटफॉर्म से तत्काल निलंबन या स्थायी प्रतिबंध हो सकता है।<br/>- गंभीर कदाचार के मामलों में कानूनी कार्रवाई की जा सकती है।<br/><br/><h4 style='font-weight: bold'>5. अस्वीकरण</h4>प्लेटफॉर्म और बोट उपयोगकर्ताओं को सहायता देने के उपकरण हैं। हालांकि हम सटीकता और सुरक्षा बनाए रखने की कोशिश करते हैं, हम निम्नलिखित के लिए उत्तरदायी नहीं हैं:<br/>- उपयोगकर्ताओं द्वारा प्लेटफॉर्म का दुरुपयोग।<br/>- उपयोगकर्ताओं द्वारा अपलोड की गई झूठी या अनुपयुक्त सामग्री के परिणामस्वरूप कार्यों के लिए।<br/>- हमारे नियंत्रण से बाहर की तकनीकी समस्याओं के लिए।<br/><br/><h4 style='font-weight: bold'><h4 style='font-weight: bold'>6. शर्तों की स्वीकृति</h4>इस प्लेटफॉर्म का उपयोग करके, आप यह स्वीकार करते हैं कि आपने इन शर्तों और नियमों को पढ़ा, समझा और सहमति दी है। यदि आप सहमत नहीं हैं, तो कृपया सेवा का उपयोग न करें।<br/>सभी उपयोगकर्ताओं के लिए एक सुरक्षित और उत्पादक वातावरण सुनिश्चित करने के लिए धन्यवाद।"
@@ -2726,7 +2711,7 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
       <div className={`div27 ${isOpen&& ' div70'} ${(projectId)&& ' div21'}`}>
         <div className={`div28 ${isOpen ? "div29" : ""}`}>
           {(isShikshalokamPublicType && getFromStorage('flow', false) && 
-            !([sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))))&& 
+            !([sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))))&& 
             <Sidebar
               isOpen={isOpen}
               toggle={setIsOpen}
@@ -2768,6 +2753,7 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
                 <button
                   onClick={async (e) => {
                     if ([sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory].includes(getFromStorage('flow', false))) {
+                      setInStorage('local_route', JSON.stringify('en'), sessionFlowName.GuestDiscussion);
                       showGuestPopup();
                     } else {
                       setIsResetCalled(true);
@@ -2905,7 +2891,9 @@ const ShikshalokamVoiceBasedChat = ({ type="", variant="" }) => {
                   <li>{t('homepageList2')}</li>
                 </ul>
               </>}
-              {(!projectId && (!profileToUse || !getFromStorage('first_name', false) || getFromStorage('first_name', false) === 'null' || getFromStorage('first_name', false)==='') && !access_token)&& 
+              {(!projectId && (!profileToUse || (
+                getFromStorage('flow', false) && [sessionFlowName.GuestDiscussion, sessionFlowName.LoginDiscussion].includes(getFromStorage('flow', false))
+              )) && !access_token)&& 
                 <div className="div13" >
                   <ChatMessage 
                     botNameToDisplay={botNameToDisplay}
@@ -3406,21 +3394,6 @@ function ChatMessage({
 /* eslint-disable react-hooks/exhaustive-deps */
 
 
-export function clearFromStorage() {
-  const keysToRemove = [
-    'botName', 'chat-history', 'company', 'first_name', 'has_accepted_tnc', 'intro_message', 
-    'isChatVisible', 'isNewChatOpen', 'isOldChatOpen', 'profileid', 'route', 'sessionid', 'showFileInput', 
-    'showHomepage', 'state', 'access_token', 'flow', 'statemachine_length', 'selected_type', 
-    'preferred_route', 'country', 'city', 'ip_city', 'ip_state', 'ip_country', 'llmError', 'lang_progress',
-    'grit', 'device_id', 'defaultBotName'
-  ];
-
-  keysToRemove.forEach((key) => {
-    removeFromStorage(key);
-  });
-}
-
-
 export async function handleFileUpload(e, storyData, files, setFileErrorText, fileSizeText, access_token, setFiles, setError, projectId, setIsLoading, navigate, t) {
     
   const story_id = storyData?.id;
@@ -3536,46 +3509,9 @@ export const partialUpdateMedia = (partialUpdateId, include_in_story=false, acce
   }
 };
 
-export const setInStorage = (key, value, currentFlow) => {
-  const flow = currentFlow || sessionStorage.getItem('flow') || localStorage.getItem('flow');
-  const sessionFlows = [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory];
-  const isTemporary = flow && sessionFlows.includes(flow);
-
-  const storage = isTemporary ? sessionStorage : localStorage;
-  storage.setItem(key, value);
-};
-
-export const getFromStorage = (key, parseValue = false) => {
-  const flow = sessionStorage.getItem('flow') || localStorage.getItem('flow');
-  const sessionFlows = [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory];
-  const isTemporary = flow && sessionFlows.includes(flow);
-  const storage = isTemporary ? sessionStorage : localStorage;
-  const value = storage.getItem(key);
-
-  if (value && parseValue) {
-    try {
-      return JSON.parse(value);
-    } catch (e) {
-      console.error(`Error parsing value for key "${key}":`, e);
-      return null;
-    }
-  }
-
-  return value;
-};
-
-export const removeFromStorage = (key) => {
-  const flow = sessionStorage.getItem('flow') || localStorage.getItem('flow');
-  const sessionFlows = [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory];
-  const isTemporary = flow && sessionFlows.includes(flow);
-
-  const storage = isTemporary ? sessionStorage : localStorage;
-  storage.removeItem(key);
-};
-
 export const useSmartChatStorage = () => {
   const flow = sessionStorage.getItem('flow') || localStorage.getItem('flow');
-  const sessionFlows = [sessionFlowName.GuestDiscussion, sessionFlowName.GuestMiStory];
+  const sessionFlows = [sessionFlowName.GuestMiStory];
   const isTemporary = flow && sessionFlows.includes(flow);
 
   const [sessionValue, setSessionValue] = useSessionStorage("chat-history", []);

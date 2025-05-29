@@ -86,5 +86,18 @@
     "tncText3": "",
     "challengesHeader": "चुनौतियां",
     "solutionsHeader": "समाधान",
-    "photosLimitMsg": "आप अधिकतम 10 छवियाँ अपलोड कर सकते हैं।"
+    "photosLimitMsg": "आप अधिकतम 10 छवियाँ अपलोड कर सकते हैं।",
+    "welcome_paragraph2": "मैं मित्रा हूं और आपके शिक्षा चौपाल की महत्वपूर्ण चर्चाओं को दर्ज करने के लिए यहां हूं।",
+    "phoneNumberQuestion": "क्या आप मुझे अपना फोन नंबर बता सकते हैं?",
+    "nameQuestion": "क्या आप मुझे अपना नाम बता सकते हैं?",
+    "stateQuestion": "जिस राज्य में चर्चा हुई उसका नाम बताएं।",
+    "districtQuestion": "जिस ज़िले में चर्चा हुई उसका नाम बताएं।",
+    "organizationQuestion": "आप किस संगठन या संघ का हिस्सा हैं?",
+    "numberOfPeopleQuestion": "चर्चा में कितने लोग शामिल थे?",
+    "dateDiscussionQuestion": "चर्चा किस तारीख को हुई?",
+    "nameQuestionPlaceholder": "आपका नाम",
+    "organizationPlaceholder": "मान",
+    "numberOfPeoplePlaceholder": "मान",
+    "dateQuestionPlaceholder": "तारीख/महीना/साल",
+    "continueButton": "आगे बढ़ें"
 }

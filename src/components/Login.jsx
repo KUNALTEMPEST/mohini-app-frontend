@@ -14,8 +14,8 @@ import "./custom-style.css"
 import "../index.css"
 import { languageList, sessionFlowName } from "../pages/ShikshalokamVoiceChat/enum";
 import i18n, { setLanguage } from '../i18n';
-import { clearFromStorage } from "../pages/ShikshalokamVoiceChat/voice-chat";
 import { useTranslation } from "react-i18next";
+import { clearFromStorage } from "../services/storage_service";
 
 const cookies = new Cookies();
 const login_api_url = `/api/login/`;
@@ -333,7 +333,7 @@ function Login({ type, variant }) {
           selectID="pagelanguageID"
           selectName="language"
           selectOptions={languageList}
-          labelDivClass="text-left text-slate-700"
+          labelDivClass="text-left text-slate-700 font-bold"
           selectValue={pageLanguage}
           selectClassName="bg-white text-slate-600 rounded-3xl p-3 mt-0 outline outline-slate-300 outline-1 outline-offset min-w-max"
           selectOnChange={handlePageLanguageChange}
@@ -380,7 +380,7 @@ function Login({ type, variant }) {
                   selectID="pagelanguageID"
                   selectName="language"
                   selectOptions={languageList}
-                  labelDivClass="text-left text-slate-700"
+                  labelDivClass="text-left text-slate-700 font-bold"
                   selectValue={pageLanguage}
                   selectClassName="bg-white text-slate-600 rounded-3xl p-3 mt-0 outline outline-slate-300 outline-1 outline-offset min-w-0 w-full"
                   selectOnChange={handlePageLanguageChange}
@@ -416,7 +416,7 @@ function Login({ type, variant }) {
           <div className="p-2 text-center">
             <form id="myForm" onSubmit={submitForm}>
               <>
-                <div className="text-left text-slate-700 mt-7 ml-[7%] md:ml-[18%]">
+                <div className="text-left text-slate-700 mt-7 ml-[7%] md:ml-[16%]">
                   <b>{t('firstNameText')} *</b>
                 </div>
                 <div>
@@ -433,46 +433,52 @@ function Login({ type, variant }) {
               </>
                 <>
                   <FormData layOut={1} isRequired={true}  labelName={`${t('phoneNumberText')} *`} id="phnNumID" inputType="text" inputName="phoneNumber" placeholder={t('phoneNumberText')}
-                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[18%]"
+                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[16%] font-bold"
                     inputClass="bg-white text-slate-600 rounded-md px-3 mt-1 outline outline-slate-300 outline-1 outline-offset w-[95%] md:w-[70%] min-h-[68px]"
                     inputOnChange={handlePhoneChange}
                     fieldError={fieldError}
                     inputValue = {phoneNumberField}
+                    errorMessageClass="text-left ml-[7%] md:ml-[16%] text-red-500 text-md"
                   />
                   <FormData layOut={2} labelName={`${t('languageText')} *`} id="languageID" selectID="languageID" selectName="language"
                     selectOptions={languageList}
-                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[18%]"
+                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[16%] font-bold"
                     selectValue = {userLanguage}
                     selectClassName="bg-white text-slate-600 rounded-md px-3 mt-1 outline outline-slate-300 outline-1 outline-offset w-[95%] md:w-[70%] min-h-[68px]"
                     selectOnChange={handleLanguageChange}
                     isRequired={true}
+                    errorMessageClass="text-left ml-[7%] md:ml-[16%] text-red-500 text-md"
                   />
                   <FormData layOut={2} labelName={`${t('stateText')}  *`} id="stateNameID" selectID="stateNameID" selectName="stateName"
                     selectOptions={stateLabelArray}
-                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[18%]"
+                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[16%] font-bold"
                     selectValue = {userState?.value}
                     selectClassName="bg-white text-slate-600 rounded-md px-3 mt-1 outline outline-slate-300 outline-1 outline-offset w-[95%] md:w-[70%] min-h-[68px]"
                     selectOnChange={handleStateChange}
-                    isRequired={stateLabelArray?.length > 0 ? true : false}                 />
+                    isRequired={stateLabelArray?.length > 0 ? true : false}                 
+                    errorMessageClass="text-left ml-[7%] md:ml-[16%] text-red-500 text-md"
+                  />
                   <FormData layOut={2} 
                     labelName={`${t('districtText')}${districtLabelArray?.length > 0 ? ' *' : ''}`}
                     id="districtNameID" selectID="districtNameID" selectName="districtName"
                     selectOptions={districtLabelArray}
-                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[18%]"
+                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[16%] font-bold"
                     selectValue = {userDistrict?.value}
                     selectClassName="bg-white text-slate-600 rounded-md px-3 mt-1 outline outline-slate-300 outline-1 outline-offset w-[95%] md:w-[70%] min-h-[68px]"
                     selectOnChange={handleDistrictChange}
                     isRequired={districtLabelArray?.length > 0 ? true : false}
+                    errorMessageClass="text-left ml-[7%] md:ml-[16%] text-red-500 text-md"
                   />
                   <FormData layOut={2} 
                     labelName={`${t('blockText')}${blockLabelArray?.length > 0 ? ' *' : ''}`}
                     id="blockNameID" selectID="blockNameID" selectName="blockName"
                     selectOptions={blockLabelArray}
-                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[18%]"
+                    labelDivClass="text-left text-slate-700 mt-6 ml-[7%] md:ml-[16%] font-bold"
                     selectValue = {userBlock?.value}
                     selectClassName="bg-white text-slate-600 rounded-md px-3 mt-1 outline outline-slate-300 outline-1 outline-offset w-[95%] md:w-[70%] min-h-[68px]"
                     selectOnChange={handleBlockChange}
                     isRequired={blockLabelArray?.length > 0 ? true : false}
+                    errorMessageClass="text-left ml-[7%] md:ml-[16%] text-red-500 text-md"
                   />
                   <div className="text-left text-slate-700 ml-[4%] md:ml-[18%] mt-6">
                     <label className="inline-block">

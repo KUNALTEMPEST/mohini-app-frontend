@@ -589,27 +589,6 @@ function ActionItems({
                   <Guidelines text={t("actionItems.guidelines")} />
                 </div>
                 <div className="bg-white p-3 rounded-2xl">
-                  {/* <ActionItemsList
-                    language={language}
-                    visibleCount={visibleCount}
-                    selectedIndex={selectedIndex}
-                    actionList={actionList}
-                    handleLeftArrowClick={handleLeftArrowClick}
-                    handleRightArrowClick={handleRightArrowClick}
-                    fetchError={fetchError}
-                    swipeDirection={swipeDirection}
-                    isViewMode={!isSelectActionItems}
-                    finalActionList={getActionListArray()}
-                    handleActionListClick={() => {
-                      setShowSelectedActionLoader(true)
-
-                      if (selectedIndex !== null) {
-                        updateSelectedActionPlanSources(selectedIndex);
-                      }
-                      setWantsToMoveForward(true);
-                    }}
-                    hasClickedOnAddmore={hasClickedOnAddmore}
-                  /> */}
                   {!isSelectActionItems ? <ActionItemsList
                     language={language}
                     visibleCount={visibleCount}
@@ -664,22 +643,6 @@ function ActionItems({
 
                       
                       {!isSelectActionItems && <Disclaimer text={t('disclaimer.actionsText')}/>}
-                  {/* {isSelectActionItems && !!actionList && (
-                    <>
-                      <SuggestOrAddCta
-                        showAdditionalCTA={!useAICreationSessionStore.getState().getIsOwnObjective()}
-                        additionCTAText={t("selectObjective.goBack")}
-                        handleAdditionalCTAClick={handleGoBackToObjectives}
-                        handleSuggestMore={handleSuggestMore}
-                        handleAddOwnClick={() => setHasClickedOnAddmore(true)}
-                        language={language}
-                        showSuggestMoreButton={
-                          !visibleCount && actionList?.length > 1
-                        }
-                        showAddOwnButton={true}
-                      />
-                    </>
-                  )} */}
                 </div>
               </>
             )}
@@ -761,22 +724,6 @@ function ActionItems({
                           wrapperStyles: "md:!w-[100%]",
                         }}
                       />
-                      {/* {isSelectActionItems && !!actionList && actionList?.length > 0 && (
-                        <>
-                          <SuggestOrAddCta
-                            showAdditionalCTA={!useAICreationSessionStore.getState().getIsOwnObjective()}
-                            additionCTAText={t("selectObjective.goBack")}
-                            handleAdditionalCTAClick={handleGoBackToObjectives}
-                            handleSuggestMore={handleSuggestMore}
-                            handleAddOwnClick={() => setHasClickedOnAddmore(true)}
-                            language={language}
-                            showSuggestMoreButton={
-                              !visibleCount && actionList?.length > 1
-                            }
-                            showAddOwnButton={true}
-                          />
-                        </>
-                      )} */}
                     </div>
                   </div>
                 );
@@ -798,16 +745,6 @@ function ActionItems({
 
             {isSelectActionItems ? (
               <></>
-              // <div className="mt-5">
-              //   <ChatBox
-              //     textInputRef={textInputRef}
-              //     textMessage={textMessage}
-              //     handleOnInputText={handleOnInputText}
-              //     handleSendMessage={handleSendMessage}
-              //     setUseTextbox={setUseTextbox}
-              //     isReadOnly={false}
-              //   />
-              // </div>
             ) : (
               // <></>
               <div className={`div35 label1`}>

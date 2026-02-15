@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 /* icons */
@@ -17,7 +17,6 @@ import { transformActionListSources } from "../../../utils/mitra-chat";
 import ActionItemsList from "./components/action-items/ActionItemsList";
 import LoadingChat from "./components/LoadingChat";
 import BotMessage from "./components/chat-message/BotMessage";
-import SuggestOrAddCta from "./components/SuggestOrAddCta";
 import ErrorText from "./components/ErrorText";
 import Source from "./components/Source";
 /* constants */
@@ -27,11 +26,6 @@ import { CONVERSATION_USER_TYPES } from "../../../constants/mitra.constants";
 import "../stylesheet/chatStyle.css";
 import { useAICreationSessionStore } from "store";
 import ChatWindow from "./components/ChatWindow";
-import { useSearchParams } from "react-router-dom";
-import { sessionFlowName } from "../../../../ShikshalokamVoiceChat/enum";
-import { bot_routes } from "../../../../../configure";
-import { useChatWebhook } from "../../../../../hooks/useChatWebhook";
-import { buildWebSocketUrl } from "../../../../../utils/helpers";
 import ChatMessage from "./components/chat-message/ChatMessage";
 import { getOrTextTranslation } from "../question script/secondpage_tanslation";
 import TextareaWithVoice from "../../../components/textarea-with-mic";
@@ -57,14 +51,35 @@ function ActionItems({
   getLoaderState,
 }) {
   const { t } = useTranslation("ai_creation_translation");
+
+  const actionListChatHistory = useAICreationSessionStore(state => state.actionListChatHistory);
+  const objective = useAICreationSessionStore(state => state.selectedObjective);
+  const preferredLanguage = useAICreationSessionStore(state => state.preferredLanguage) || {};
+  const profileId = useAICreationSessionStore(state => state.profileId);
+
+  const {
+    getActionList: getActionListStore, setActionList: setActionListStore,
+    getActionItemSource, setActionItemSource: setActionItemSourceStore,
+    getSelectedAction, setSelectedAction: setSelectedActionStore,
+    setActionListChatHistory: setActionListChatHistoryStore,
+    setSelectedObjective: setSelectedObjectiveStore,
+    setErrorText: setErrorTextStore,
+    setHasClickedActionAddMore: setHasClickedActionAddMoreStore,
+    getHasClickedActionAddMore,
+    getUserProblemStatement, getSystemError,
+    getLastFetchedActionListObjective, setLastFetchedActionListObjective,
+    getSession, getSelectedObjective,
+    setSelectedActionSource,
+  } = useAICreationSessionStore.getState();
+
   const [actionList, setActionList] = useState(() => {
-    const storedActionList = useAICreationSessionStore.getState().getActionList()
+    const storedActionList = getActionListStore();
     return storedActionList || []
   });
 
   const [visibleCount, setVisibleCount] = useState(false);
   const [hasClickedOnAddmore, setHasClickedOnAddmore] = useState(() => {
-    return useAICreationSessionStore.getState().getHasClickedActionAddMore() || false;
+    return getHasClickedActionAddMore() || false;
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState(null);
@@ -73,15 +88,14 @@ function ActionItems({
   const [actionItemSource, setActionItemSource] = useState({});
 
   useEffect(() => {
-    const storedActionItemSource =
-      useAICreationSessionStore.getState().getActionItemSource()
+    const storedActionItemSource = getActionItemSource();
     if (storedActionItemSource) {
       setActionItemSource(storedActionItemSource);
     }
     if (isSelectActionItems) handleScrollIntoView();
   }, []);
   const [isInReadOnlyMode, setIsInReadOnlyMode] = useState(() => {
-    const storedActionList = useAICreationSessionStore.getState().getSelectedAction();
+    const storedActionList = getSelectedAction();
     if (storedActionList) {
       if (storedActionList.length === 1) {
         return true;
@@ -93,17 +107,8 @@ function ActionItems({
   const [goBack, setGoBack] = useState(false)
   const [showSelectedActionLoader, setShowSelectedActionLoader] = useState(false)
 
-  const localChatHistory = useAICreationSessionStore.getState().getActionListChatHistory()
-
-  const [actionListChatHistory, setActionListChatHistory] = useState(
-    !!localChatHistory?.length ? localChatHistory : []
-  );
-
-  const { setActionList: setActionListStore, setActionItemSource: setActionItemSourceStore, setSelectedAction: setSelectedActionStore, setActionListChatHistory: setActionListChatHistoryStore, setSelectedObjective: setSelectedObjectiveStore, setErrorText: setErrorTextStore, setHasClickedActionAddMore: setHasClickedActionAddMoreStore } = useAICreationSessionStore.getState()
-  const preferredLanguage = useAICreationSessionStore.getState().getPreferredLanguage() || "en"
   const language = preferredLanguage.value || "en";
 
-  const objective = useAICreationSessionStore(state => state.selectedObjective)
   const [isFetchingData, setIsFetchingData] = useState(false)
 
   // Sync hasClickedOnAddmore with store
@@ -138,8 +143,8 @@ function ActionItems({
   async function fetchActionList(createNew = false, newObjective) {
     try {
       handleLoaderState(LOADER_KEYS.FETCH_ACTION_LIST, true);
-        const userProblemStatement = useAICreationSessionStore.getState().getUserProblemStatement()
-        const profile_id = useAICreationSessionStore.getState().getProfileId()
+        const userProblemStatement = getUserProblemStatement();
+        const profile_id = profileId;
 
         const finalObjective = createNew ? newObjective : objective
         const fetchedActionList = await getActionList(
@@ -163,14 +168,14 @@ function ActionItems({
           setActionItemSourceStore(transformedSource)
           if (isSelectActionItems) handleScrollIntoView();
         } else {
-          const errorMessage = message?.length > 0 ? message : (useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater"));
+          const errorMessage = message?.length > 0 ? message : (getSystemError() || t("common.pleaseTryAgainLater"));
           setFetchError(errorMessage);
           // window.location.reload();
         }
       // }
     } catch (error) {
       setFetchError(
-       error?.response?.data?.message || useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater")
+       error?.response?.data?.message || getSystemError() || t("common.pleaseTryAgainLater")
       );
 
       setActionList([])
@@ -179,7 +184,7 @@ function ActionItems({
       setActionItemSourceStore({})
 
       setErrorTextStore(
-       error?.response?.data?.message || useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater")
+       error?.response?.data?.message || getSystemError() || t("common.pleaseTryAgainLater")
       )
       setErrorText(error?.response?.data?.message || "")
       console.error(error);
@@ -193,11 +198,11 @@ function ActionItems({
     // Only fetch if objective has actually changed to a different value
     // Use JSON.stringify to compare arrays/objects by value, not reference
     const currentObjectiveStr = JSON.stringify(objective);
-    const lastFetchedObjective = useAICreationSessionStore.getState().getLastFetchedActionListObjective();
+    const lastFetchedObjective = getLastFetchedActionListObjective();
     const lastFetchedStr = JSON.stringify(lastFetchedObjective);
     
     if (objective && currentObjectiveStr !== lastFetchedStr) {
-      useAICreationSessionStore.getState().setLastFetchedActionListObjective(objective);
+      setLastFetchedActionListObjective(objective);
       fetchActionList();
     }
   }, [objective]);
@@ -221,7 +226,7 @@ function ActionItems({
 
   const getActionListArray = () => {
     if (!isSelectActionItems || isInReadOnlyMode) {
-      let stored_action = useAICreationSessionStore.getState().getSelectedAction()?.[0]?.actionSteps?.map((action, index) => ({
+      let stored_action = getSelectedAction()?.[0]?.actionSteps?.map((action, index) => ({
         id: index.toString(),
         content: action,
       }));
@@ -245,16 +250,14 @@ function ActionItems({
   };
 
   function updateSelectedActionPlanSources(selectedIndex) {
-    const store = useAICreationSessionStore.getState();
-    const actionList = store.getActionList() || [];
-    const setSelectedActionSource = store.setSelectedActionSource;
+    const actionListData = getActionListStore() || [];
 
-    if (!Array.isArray(actionList) || !actionList[selectedIndex]) {
+    if (!Array.isArray(actionListData) || !actionListData[selectedIndex]) {
       setSelectedActionSource([]);
       return [];
     }
 
-    const selectedPlan = actionList[selectedIndex];
+    const selectedPlan = actionListData[selectedIndex];
     const finalSources = [];
     const seen = new Set();
 
@@ -271,33 +274,11 @@ function ActionItems({
     return finalSources;
   }
 
-
-  const isActionEmptyOrDefault = (action_to_store) => {
-
-    if (!action_to_store || action_to_store.length === 0) {
-      return true;
-    }
-
-
-    return action_to_store.some((action) => {
-      return (
-        !action.content?.step?.trim() ||
-        defaultActionList.some(
-          (defaultAction) => defaultAction.content?.step === action.content?.step?.trim()
-        )
-      );
-    });
-  };
-
   const handleContinueClick = async (action_to_store) => {
-
-
     try {
 
       setIsFetchingData(true)
 
-      const store = useAICreationSessionStore.getState();
-      const setSelectedActionSource = store.setSelectedActionSource;
       const finalSources = [];
       const seen = new Set();
 
@@ -319,10 +300,10 @@ function ActionItems({
         },
       ];
 
-      const userProblemStatement = useAICreationSessionStore.getState().getUserProblemStatement()
-      const objective = useAICreationSessionStore.getState().getSelectedObjective()
+      const userProblemStatement = getUserProblemStatement();
+      const selectedObjective = getSelectedObjective();
       // setIsLoading(true);
-      const profile_id = useAICreationSessionStore.getState().getProfileId()
+      const profile_id = profileId;
       const editedActionsForValidation = action_to_store
         .filter(action => {
           if (action.isNew) {
@@ -337,7 +318,7 @@ function ActionItems({
       if (editedActionsForValidation.length > 0) {
         const validate_response = await validateActionList(
           editedActionsForValidation,
-          objective,
+          selectedObjective,
           userProblemStatement,
           language,
           profile_id
@@ -355,7 +336,7 @@ function ActionItems({
         // setIsLoading(true);
         handleLoaderState(LOADER_KEYS.LOAD_WEEKS_SELECTION, true);
         setSelectedActionStore(actionListToStore)
-        const currentSession = useAICreationSessionStore.getState().getSession()
+        const currentSession = getSession();
         const botMessage = {
           role: BOT,
           message:
@@ -365,7 +346,7 @@ function ActionItems({
               ? t("actionItems.addEachStep")
               : t("actionItems.editReorderDeleteActions") +
                 "\n" +
-                JSON.stringify(useAICreationSessionStore.getState().getActionList()),
+                JSON.stringify(getActionListStore()),
           messageId: "7_1",
         };
 
@@ -378,7 +359,7 @@ function ActionItems({
       }
     } catch (error) {
       const errorMessage =
-        useAICreationSessionStore.getState().getSystemError() ||
+        getSystemError() ||
         t("common.pleaseTryAgainLater");
       setErrorText(errorMessage);
       // setIsLoading(false);
@@ -453,7 +434,6 @@ function ActionItems({
 
   const handleGoBackToObjectives = () => {
     handleGoBack(3)
-    setActionListChatHistory([])
     setActionListChatHistoryStore([])
     setSelectedObjectiveStore(null)
   }
@@ -693,6 +673,9 @@ export function FinalActionPage({
   appendEmptyTextarea = false
 }) {
 
+  const preferredLanguage = useAICreationSessionStore(state => state.preferredLanguage) || {};
+  const language = preferredLanguage?.value || "en";
+  
   const { t } = useTranslation("ai_creation_translation");
   const errorRef = useRef(null);
   const normalizeContent = (content) =>
@@ -759,9 +742,6 @@ export function FinalActionPage({
       });
     }
   }, [errorText]);
-
-  const preferredLanguage = useAICreationSessionStore.getState().getPreferredLanguage() || "en"
-  const language = preferredLanguage.value || "en";
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;

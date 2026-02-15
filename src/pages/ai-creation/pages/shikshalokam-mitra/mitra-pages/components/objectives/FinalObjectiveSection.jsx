@@ -70,7 +70,11 @@ export function FinalObjectiveSection({
       }));
     };
   
-    const preferredLanguage = useAICreationSessionStore.getState().getPreferredLanguage() || "en";
+    const preferredLanguage = useAICreationSessionStore(state => state.preferredLanguage) || {};
+    const profileId = useAICreationSessionStore(state => state.profileId);
+
+    const { getUserProblemStatement, getSystemError } = useAICreationSessionStore.getState();
+
     const language = preferredLanguage.value || "en";
   
     const handleInputChange = (id, value) => {
@@ -126,8 +130,8 @@ export function FinalObjectiveSection({
           })
           .map(obj => obj.content.trim());
   
-        const profile_id = useAICreationSessionStore.getState().getProfileId();
-        const user_problem_statement = useAICreationSessionStore.getState().getUserProblemStatement();
+        const profile_id = profileId;
+        const user_problem_statement = getUserProblemStatement();
 
         if (editedObjectivesForValidation.length > 0) {
           // Validate only selected objectives
@@ -151,7 +155,7 @@ export function FinalObjectiveSection({
   
       } catch (error) {
         const errorMessage =
-          useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater");
+          getSystemError() || t("common.pleaseTryAgainLater");
         setErrorText(errorMessage);
         errorTimeoutRef.current = setTimeout(() => {
                 setErrorText("");

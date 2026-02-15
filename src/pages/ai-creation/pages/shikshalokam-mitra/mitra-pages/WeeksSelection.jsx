@@ -36,32 +36,25 @@ function WeeksSelection({
   const [isWeekSectionLoader, setIsWeekSectionLoader] = useState(false);
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
   const [useTextbox, setUseTextbox] = useState(false);
-  const [introMessage, setIntroMessage] = useState(null);
   const [isLoadingIntro, setIsLoadingIntro] = useState(true);
   const { commonsNetworkReconnectionPopup } = useConfirmationPopup()
 
-  const { getDurationChatHistory, setDurationChatHistoryStore } = useAICreationSessionStore.getState()
-
   const { t } = useTranslation("ai_creation_translation");
 
-  const localChatHistory =
-    useAICreationSessionStore.getState().getDurationChatHistory();
-
-  const [durationChatHistory, setDurationChatHistory] = useState(
-    localChatHistory?.length ? localChatHistory : []
-  );
+  const durationChatHistory = useAICreationSessionStore(state => state.durationChatHistory);
+  const durationIntroMessage = useAICreationSessionStore(state => state.durationIntroMessage);
+  const profileId = useAICreationSessionStore(state => state.profileId);
+  const session = useAICreationSessionStore(state => state.session);
 
   const {
+    getDurationChatHistory, setDurationChatHistory: setDurationChatHistoryStore,
     setSelectedWeek: setSelectedWeekStore,
-    profileId,
     getSession,
-    getPreferredLanguage,
+    setDurationIntroMessage,
   } = useAICreationSessionStore.getState();
 
   const [searchParams] = useSearchParams();
   const storageFlow = sessionFlowName.Creation;
-  const sessionId = getSession();
-  const chatLanguage = getPreferredLanguage() || "en";
   const accessToken = sessionStorage.getItem("accToken");
 
   // Fetch intro message from API
@@ -74,20 +67,17 @@ function WeeksSelection({
           company_bot__route: bot_routes.mitra_duration,
         });
         const message = response?.[0]?.alt_introductory_message;
-        setIntroMessage(message);
-        useAICreationSessionStore.getState().setDurationIntroMessage(message);
+        setDurationIntroMessage(message);
       } catch (error) {
         console.error("Error fetching duration intro message:", error);
         // Fallback to translation if API fails
-        setIntroMessage(t("weeksSelection.howManyWeeks"));
+        setDurationIntroMessage(t("weeksSelection.howManyWeeks"));
       } finally {
         setIsLoadingIntro(false);
       }
     };
 
-    const storedIntroMessage = useAICreationSessionStore.getState().getDurationIntroMessage();
-    if (storedIntroMessage) {
-      setIntroMessage(storedIntroMessage);
+    if (durationIntroMessage) {
       setIsLoadingIntro(false);
     } else {
       fetchIntroMessage();
@@ -135,14 +125,14 @@ function WeeksSelection({
   const onWebSocketOpen = useCallback(() => {
     sendSocketMessage({
       type: "authenticate",
-      sessionid: sessionId,
+      sessionid: session,
       profileid: profileId,
       access_token: accessToken,
       route: "en",
       bot_route: bot_routes.mitra_duration,
       flow_name: storageFlow,
     });
-  }, [sessionId, profileId, accessToken, chatLanguage, storageFlow]);
+  }, [session, profileId, accessToken, storageFlow]);
 
   const onWebSocketMessage = useCallback(
     (event) => {
@@ -156,16 +146,8 @@ function WeeksSelection({
           updated_at: Date.now(),
         };
 
-        setDurationChatHistory((prev) => [...prev, newMessage]);
-
-        const currentStoreHistory =
-          useAICreationSessionStore
-            .getState()
-            .getDurationChatHistory();
-
-        useAICreationSessionStore
-          .getState()
-          .setDurationChatHistory([...currentStoreHistory, newMessage]);
+        const currentStoreHistory = getDurationChatHistory();
+        setDurationChatHistoryStore([...currentStoreHistory, newMessage]);
 
         setIsWaitingForBot(false);
         handleScrollIntoView();
@@ -219,11 +201,8 @@ function WeeksSelection({
       updated_at: Date.now(),
     };
 
-    setDurationChatHistory((prev) => [...prev, newMessage]);
-
-    const currentStoreHistory = useAICreationSessionStore.getState().getDurationChatHistory();
-
-    useAICreationSessionStore.getState().setDurationChatHistory([...currentStoreHistory, newMessage]);
+    const currentStoreHistory = getDurationChatHistory();
+    setDurationChatHistoryStore([...currentStoreHistory, newMessage]);
 
     setIsWaitingForBot(true);
 
@@ -240,10 +219,9 @@ function WeeksSelection({
     if (!selectedWeek) return;
 
     setSelectedWeekStore(selectedWeek);
-    const botMessage = introMessage || t("weeksSelection.howManyWeeks");
+    const botMessage = durationIntroMessage || t("weeksSelection.howManyWeeks");
 
-    const currentSession =
-      useAICreationSessionStore.getState().getSession();
+    const currentSession = getSession();
 
     await saveUserChatsInDB(botMessage, currentSession, BOT);
     await saveUserChatsInDB(
@@ -261,7 +239,7 @@ function WeeksSelection({
 
   return (
     <div>
-      {introMessage && <BotMessage showChatStyle primaryMessage={introMessage} />}
+      {durationIntroMessage && <BotMessage showChatStyle primaryMessage={durationIntroMessage} />}
 
       <div className="flex flex-col h-auto">
         {durationChatHistory.length > 0 && (

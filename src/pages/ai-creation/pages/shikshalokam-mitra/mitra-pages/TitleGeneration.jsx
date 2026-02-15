@@ -27,12 +27,6 @@ import TextareaWithVoice from "../../../components/textarea-with-mic";
 
 const { BOT, USER } = CONVERSATION_USER_TYPES;
 function TitleGeneration({
-  isBotTalking,
-  handleSpeakerOn,
-  handleSpeakerOff,
-  setIsLoading,
-  isLoading,
-  handleGoBack,
   handleScrollIntoView,
   isTitleGenerationSection,
   handleLoaderState,
@@ -40,8 +34,20 @@ function TitleGeneration({
 }) {
   const { t } = useTranslation("ai_creation_translation");
   const navigate = useNavigate();
+
+  const preferredLanguage = useAICreationSessionStore(state => state.preferredLanguage) || {};
+  const profileId = useAICreationSessionStore(state => state.profileId);
+
+  const {
+    getProjectTitle, setProjectTitle: setProjectTitleStore,
+    getUserProblemStatement, getSelectedObjective, getSelectedAction,
+    getSystemError, getSession, getSelectedWeek,
+    getSelectedObjectiveSource, getSelectedActionSource,
+    setMedia: setMediaStore, setProjectId,
+  } = useAICreationSessionStore.getState();
+
   const [inputText, setInputText] = useState(() => {
-    let title = useAICreationSessionStore.getState().getProjectTitle() || "";
+    let title = getProjectTitle() || "";
     return title;
   });
 
@@ -53,24 +59,21 @@ function TitleGeneration({
   const [isApiCalling, setIsApiCalling] = useState(false);
   const [isRecording, setIsRecording] = useState(false)
 
-  const preferredLanguage = useAICreationSessionStore.getState().getPreferredLanguage() || {};
-  const language = preferredLanguage.value || "en";
+  const language = preferredLanguage?.value || "en";
   const [fetchError, setFetchError] = useState("");
 
   const [localErrorText, setLocalErrorText] = useState("");
-
-  const { setProjectTitle: setProjectTitleStore, setMedia: setMediaStore, setProjectId } = useAICreationSessionStore.getState();
 
   useEffect(() => {
     async function fetchTitle() {
       try {
         handleLoaderState(LOADER_KEYS.LOAD_TITLE_GENERATION, true);
-        let title = useAICreationSessionStore.getState().getProjectTitle();
+        let title = getProjectTitle();
         if (!title) {
-          const user_problem_statement = useAICreationSessionStore.getState().getUserProblemStatement();
-          const user_objective = useAICreationSessionStore.getState().getSelectedObjective();
-          const user_action_list = useAICreationSessionStore.getState().getSelectedAction();
-          const profile_id = useAICreationSessionStore.getState().getProfileId();
+          const user_problem_statement = getUserProblemStatement();
+          const user_objective = getSelectedObjective();
+          const user_action_list = getSelectedAction();
+          const profile_id = profileId;
           title = await getTitle(
             user_problem_statement,
             user_objective,
@@ -90,7 +93,7 @@ function TitleGeneration({
         }
       } catch (error) {
         setFetchError(
-          useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater")
+          getSystemError() || t("common.pleaseTryAgainLater")
         );
         handleLoaderState(LOADER_KEYS.LOAD_TITLE_GENERATION, false);
         console.error(error);
@@ -139,10 +142,10 @@ function TitleGeneration({
     ) {
       // setIsLoading(true);
       setIsApiCalling(true);
-      const user_problem_statement = useAICreationSessionStore.getState().getUserProblemStatement();
-      const user_objective = useAICreationSessionStore.getState().getSelectedObjective();
-      const user_action_list = useAICreationSessionStore.getState().getSelectedAction();
-      const profile_id = useAICreationSessionStore.getState().getProfileId();
+      const user_problem_statement = getUserProblemStatement();
+      const user_objective = getSelectedObjective();
+      const user_action_list = getSelectedAction();
+      const profile_id = profileId;
       const validate_response = await validateTitle(
         inputText,
         user_problem_statement,
@@ -160,7 +163,7 @@ function TitleGeneration({
       setIsLocalLoading(true);
       setProjectTitleStore(inputText)
 
-      const session = useAICreationSessionStore.getState().getSession() || null;
+      const session = getSession() || null;
       const field_to_update = {
         title: inputText,
         session_status: "COMPLETED",
@@ -179,13 +182,13 @@ function TitleGeneration({
       try {
         const response = await updateChatSession(session, field_to_update);
         if (response) {
-          const user_problem_statement = useAICreationSessionStore.getState().getUserProblemStatement();
-          const project_duration = useAICreationSessionStore.getState().getSelectedWeek();
-          const user_objective = useAICreationSessionStore.getState().getSelectedObjective();
-          const user_action_list = useAICreationSessionStore.getState().getSelectedAction()[0]?.actionSteps?.map(step => step?.step);
+          const user_problem_statement = getUserProblemStatement();
+          const project_duration = getSelectedWeek();
+          const user_objective = getSelectedObjective();
+          const user_action_list = getSelectedAction()[0]?.actionSteps?.map(step => step?.step);
           const access_token = sessionStorage.getItem(process.env.REACT_APP_ACCESS_TOKEN_KEY)
-          const objective_chunk = useAICreationSessionStore.getState().getSelectedObjectiveSource() || [];
-          const action_chunk = useAICreationSessionStore.getState().getSelectedActionSource() || [];
+          const objective_chunk = getSelectedObjectiveSource() || [];
+          const action_chunk = getSelectedActionSource() || [];
 
           const chunks = {
             objective_chunk,

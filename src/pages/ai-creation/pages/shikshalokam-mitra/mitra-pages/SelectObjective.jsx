@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 /* utils and api services */
@@ -19,8 +19,6 @@ import { CONVERSATION_USER_TYPES } from "../../../constants/mitra.constants";
 /* styles */
 import "../stylesheet/chatStyle.css";
 import { useAICreationSessionStore } from "store";
-import { sessionFlowName } from "../../../../ShikshalokamVoiceChat/enum";
-import { useSearchParams } from "react-router-dom";
 import ChatWindow from "./components/ChatWindow";
 import ChatMessage from "./components/chat-message/ChatMessage";
 import LoadingChat from "./components/LoadingChat";
@@ -43,97 +41,76 @@ function SelectObjective({
   getLoaderState,
 }) {
   const { t } = useTranslation("ai_creation_translation");
+
+  const objectiveChatHistory = useAICreationSessionStore(state => state.objectiveChatHistory);
+  const selectedObjective = useAICreationSessionStore(state => state.selectedObjective) || null;
+  const profileId = useAICreationSessionStore(state => state.profileId);
+  const preferredLanguage = useAICreationSessionStore(state => state.preferredLanguage) || {};
+  const isOwnObjective = useAICreationSessionStore(state => state.isOwnObjective);
+
+  const {
+    getObjective, setObjective: setObjectiveStore,
+    getSelectedObjective, setSelectedObjective: setSelectedObjectiveStore,
+    getIsPrevObjectiveShown, setIsPrevObjectiveShown: setIsPrevObjectiveShownStore,
+    getObjectiveSource, setObjectiveSource: setObjectiveSourceStore,
+    getPrevObjective,
+    getPrevObjectiveSource,
+    setChunks: setChunksStore, getChunks,
+    setErrorText: setErrorTextStore, getSystemError,
+    getUserProblemStatement,
+    getSession, setSelectedObjectiveSource,
+  } = useAICreationSessionStore.getState();
+
   const [objectiveList, setObjectiveList] = useState(() => {
-    const storedObjective = useAICreationSessionStore.getState().getObjective();
+    const storedObjective = getObjective();
     if (storedObjective?.length > 0) {
       return storedObjective
     }
     else return []
   });
-  const [prevObjectiveList, setPrevObjectiveList] = useState(() => {
-    const storedPrevObjective = useAICreationSessionStore.getState().getPrevObjective();
-    if (storedPrevObjective?.length > 0) {
-      return storedPrevObjective
-    }
-    else return []
-  });
+
   const [hasClickedOnAddmore, setHasClickedOnAddmore] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [selectedIndices, setSelectedIndices] = useState([]);
   const [selectedObjectives, setSelectedObjectives] = useState([]);
-  const [isInReadOnlyMode, setIsInReadOnlyMode] = useState(() => {
-    const storedObjective = useAICreationSessionStore.getState().getSelectedObjective();
-    if (storedObjective) {
-      return typeof storedObjective === "string" ? true : false;
-    }
-  });
   const [objectiveSource, setObjectiveSource] = useState([]);
-  const [prevObjectiveSource, setPrevObjectiveSource] = useState([]);
-  const [isNewlyGeneratedList, setIsNewlyGeneratedList] = useState(() => {
-    const storedPrevObjective = useAICreationSessionStore.getState().getPrevObjective();
-    if (storedPrevObjective?.length > 0) {
-      return true
-    }
-    else return false
-  })
+
   const [objectiveListLoading, setObjectiveListLoading] = useState(false)
   const [prevObjectiveShown, setPrevObjectiveShown] = useState(() => {
-    const isPrevObjectiveShown = useAICreationSessionStore.getState().getIsPrevObjectiveShown();
+    const isPrevObjectiveShown = getIsPrevObjectiveShown();
     if (isPrevObjectiveShown) {
       return true
     }
     else return false;
   })
 
-  const localChatHistory = useAICreationSessionStore.getState().getObjectiveChatHistory()
-  const isOwnObjective = useAICreationSessionStore.getState().getIsOwnObjective();
-
-  const [objectiveChatHistory, setObjectiveChatHistory] = useState(
-    !!localChatHistory?.length ? localChatHistory : []
-  );
-
-
   const [visibleCount, setVisibleCount] = useState(() => {
     const defaultValueToShow = 3;
-    if (!isInReadOnlyMode) {
-      return defaultValueToShow;
-    } else {
-      const objectiveList = useAICreationSessionStore.getState().getObjective() || [];
-      const storedSelectedObjectives = useAICreationSessionStore.getState().getSelectedObjective();
-      
-      // Handle both single string (legacy) and array of strings
-      const selectedObjectivesArray = Array.isArray(storedSelectedObjectives) 
-        ? storedSelectedObjectives 
-        : (storedSelectedObjectives ? [storedSelectedObjectives] : []);
 
-      // Find indices of all selected objectives
-      const indices = selectedObjectivesArray
-        .map(obj => objectiveList.findIndex(o => o?.text === obj || o === obj))
-        .filter(idx => idx !== -1);
-      
-      setSelectedIndices(indices);
-      setSelectedObjectives(indices.map(idx => objectiveList[idx]));
-      
-      const maxSelectedIndex = Math.max(...indices, -1);
-      return maxSelectedIndex !== -1 && maxSelectedIndex > defaultValueToShow - 1
-        ? maxSelectedIndex + 1
-        : defaultValueToShow;
-    }
+    const objectiveList = getObjective() || [];
+    const storedSelectedObjectives = getSelectedObjective();
+    
+    // Handle both single string (legacy) and array of strings
+    const selectedObjectivesArray = Array.isArray(storedSelectedObjectives) 
+      ? storedSelectedObjectives 
+      : (storedSelectedObjectives ? [storedSelectedObjectives] : []);
+
+    // Find indices of all selected objectives
+    const indices = selectedObjectivesArray
+      .map(obj => objectiveList.findIndex(o => o?.text === obj || o === obj))
+      .filter(idx => idx !== -1);
+    
+    setSelectedIndices(indices);
+    setSelectedObjectives(indices.map(idx => objectiveList[idx]));
+    
+    const maxSelectedIndex = Math.max(...indices, -1);
+    return maxSelectedIndex !== -1 && maxSelectedIndex > defaultValueToShow - 1
+      ? maxSelectedIndex + 1
+      : defaultValueToShow;
+
   });
-  const preferredLanguage = useAICreationSessionStore.getState().getPreferredLanguage() || "en";
+
   const language = preferredLanguage.value || "en";
-  const { setObjective: setObjectiveStore, setPrevObjective: setPrevObjectiveStore, setPrevObjectiveSource: setPrevObjectiveSourceStore, setObjectiveSource: setObjectiveSourceStore, setChunks: setChunksStore, setSelectedObjective: setSelectedObjectiveStore, setHasClickedObjAddMore, setIsOwnObjective, setObjectListRetries, setIsPrevObjectiveShown: setIsPrevObjectiveShownStore, setErrorText: setErrorTextStore } = useAICreationSessionStore.getState()
-
-  const { profileId, setUserProblemStatement: setUserProblemStatementStore } = useAICreationSessionStore.getState();
-
-
-  const [searchParams] = useSearchParams()
-  const storageFlow = sessionFlowName.Creation;
-  const selectedType = ""
-  const sessionId = useAICreationSessionStore.getState().getSession();
-  const chatLanguage = useAICreationSessionStore.getState().getPreferredLanguage();
-  let accessToken = sessionStorage.getItem("accToken");
-
 
   async function fetchObjectiveList(createNew = false, newProblemStatement = '') {
 
@@ -141,12 +118,11 @@ function SelectObjective({
       if (!objectiveList || objectiveList?.length === 0) {
         // setIsLoading(true);
         handleLoaderState(LOADER_KEYS.FETCH_OBJECTIVE_LIST, true);
-        const userProblemStatement = newProblemStatement || useAICreationSessionStore.getState().getUserProblemStatement() || null;
-        const profile_id = useAICreationSessionStore.getState().getProfileId() || null;
+        const userProblemStatement = newProblemStatement || getUserProblemStatement() || null;
         const fetched_objectiveList = await getObjectiveList(
           userProblemStatement,
           language,
-          profile_id
+          profileId
         );
         const { message = "", objective_list = [] } = fetched_objectiveList || {};
 
@@ -156,12 +132,6 @@ function SelectObjective({
 
 
           setErrorTextStore("")
-
-
-          if(createNew) {
-            setIsNewlyGeneratedList(true)
-          }
-
 
           setObjectiveList(objective_list);
           setObjectiveStore(objective_list)
@@ -181,7 +151,7 @@ function SelectObjective({
           // setIsLoading(false);
           if (isSelectObjectiveSection) handleScrollIntoView();
         } else {
-          const errorMessage = message?.length > 0 ? message : (useAICreationSessionStore.getState().getSystemError() || t("common.pleaseTryAgainLater"));
+          const errorMessage = message?.length > 0 ? message : (getSystemError() || t("common.pleaseTryAgainLater"));
           setFetchError(errorMessage);
           // window.location.reload();
         }
@@ -202,20 +172,17 @@ function SelectObjective({
   }
 
   useEffect(() => {
-    const storedObjective = useAICreationSessionStore.getState().getObjective();
+    const storedObjective = getObjective();
 
     if(!storedObjective)
       fetchObjectiveList();
 
-    const storedObjectiveSource = useAICreationSessionStore.getState().getObjectiveSource();
-    const storedPrevObjectiveSource = useAICreationSessionStore.getState().getPrevObjectiveSource();
+    const storedObjectiveSource = getObjectiveSource();
 
     if (storedObjectiveSource) {
       setObjectiveSource(storedObjectiveSource);
     }
-    if (storedPrevObjectiveSource) {
-      setPrevObjectiveSource(storedPrevObjectiveSource);
-    }
+
     if (isSelectObjectiveSection) handleScrollIntoView();
   }, []);
 
@@ -227,22 +194,6 @@ function SelectObjective({
       return newCount;
     });
   };
-
-  useEffect(() => {
-    if (isInReadOnlyMode) {
-      // setIsLoading(true);
-      localStorage.removeItem("actionList");
-      localStorage.removeItem("selected_action");
-      const storedSelected = useAICreationSessionStore.getState().getSelectedObjective();
-      // Handle both legacy single string and new array format
-      const selectedArray = Array.isArray(storedSelected) 
-        ? storedSelected 
-        : (storedSelected ? [storedSelected] : []);
-      setSelectedObjectives(selectedArray.map(text => ({ text })));
-      setHasClickedOnAddmore(useAICreationSessionStore.getState().getHasClickedObjAddMore());
-      // setIsLoading(false);
-    }
-  }, [isInReadOnlyMode]);
 
   const handleObjectiveClick = (index) => {
     setSelectedIndices(prevIndices => {
@@ -270,9 +221,7 @@ function SelectObjective({
   };
 
   function updateSelectedObjectiveSources(selectedObjectiveTexts) {
-    const store = useAICreationSessionStore.getState();
-    const objectives = store.getObjective() || [];
-    const setSelectedObjectiveSource = store.setSelectedObjectiveSource;
+    const objectives = getObjective() || [];
 
     // Handle both single string and array of strings for backwards compatibility
     const textsArray = Array.isArray(selectedObjectiveTexts) 
@@ -317,7 +266,7 @@ function SelectObjective({
       // setObjectiveList([userSelectedObjectives]);
       setSelectedObjectiveStore(userSelectedObjectives);
       updateSelectedObjectiveSources(userSelectedObjectives);
-      const currentSession = useAICreationSessionStore.getState().getSession();
+      const currentSession = getSession();
       const botMessage = hasClickedOnAddmore && !customObjective
         ? t("selectObjective.enterObjective")
         : {
@@ -327,14 +276,14 @@ function SelectObjective({
               " " +
               t("selectObjective.selectObjective") +
               " " +
-              JSON.stringify(useAICreationSessionStore.getState().getObjective()),
+              JSON.stringify(getObjective()),
             messageId: "4_0",
           };
 
 
 
 
-      const chunks = JSON.parse(useAICreationSessionStore.getState().getChunks());
+      const chunks = JSON.parse(getChunks());
 
       // Join all selected objectives for saving to DB
       const objectivesText = userSelectedObjectives.join(", ");
@@ -358,11 +307,6 @@ function SelectObjective({
     }
   };
 
-
-  const selectedObjective = useAICreationSessionStore(
-    state => state.selectedObjective
-  ) || null;
-
   const objectiveLoadingStatusMessages = t("selectObjective.loadingStatusMessages", { returnObjects: true });
   
   if (getLoaderState(LOADER_KEYS.FETCH_OBJECTIVE_LIST)) {
@@ -382,8 +326,8 @@ function SelectObjective({
     if (item?.source === "SEPARATOR") {
       separators.push({
         index,
-        objectives: item?.objectiveListData?.objectives || prevObjectiveList,
-        sources: item?.objectiveListData?.sources || useAICreationSessionStore.getState().getPrevObjectiveSource()
+        objectives: item?.objectiveListData?.objectives || getPrevObjective(),
+        sources: item?.objectiveListData?.sources || getPrevObjectiveSource()
       });
     }
   });
@@ -517,8 +461,8 @@ function SelectObjective({
             if (section.showObjectives) {
 
 
-              const sectionObjectives = prevObjectiveShown ? prevObjectiveList : objectiveList;
-              const sectionSources = prevObjectiveShown ? useAICreationSessionStore.getState().getPrevObjectiveSource() : objectiveSource;
+              const sectionObjectives = prevObjectiveShown ? getPrevObjective() : objectiveList;
+              const sectionSources = prevObjectiveShown ? getPrevObjectiveSource() : objectiveSource;
               
               return (
                 <div key={`objectives-${sectionIndex}`}>
@@ -561,8 +505,8 @@ function SelectObjective({
                             showAdditionalCTA={!prevObjectiveShown && separators.length > 0}
                             additionCTAText={t("selectObjective.showPrevious")}
                             handleAdditionalCTAClick={() => {
-                              setObjectiveList(prevObjectiveList)
-                              setObjectiveSource(useAICreationSessionStore.getState().getPrevObjectiveSource())
+                              setObjectiveList(getPrevObjective())
+                              setObjectiveSource(getPrevObjectiveSource())
                               setPrevObjectiveShown(true)
                               setIsPrevObjectiveShownStore(true)
                               setObjectiveListLoading(true)

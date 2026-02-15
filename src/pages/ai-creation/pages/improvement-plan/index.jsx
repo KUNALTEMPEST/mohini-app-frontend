@@ -9,7 +9,7 @@ import Notification from "../../../../components/ToastMessage/TotastMessage";
 const ImprovementPlan = () => {
   const [media, setMedia] = useState([]);
   const { projectId } = useParams();
-  const items = useAICreationSessionStore.getState().getMedia()
+  const items = useAICreationSessionStore(state => state.media);
 
   useEffect(() => {
     const mediaItems = items || [];

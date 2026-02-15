@@ -13,7 +13,8 @@ import BotMessage from './components/chat-message/BotMessage';
 import ChatBox from './components/ChatBox';
 import ChatWindow from './components/ChatWindow';
 import LoadingChat from './components/LoadingChat';
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import env from "../../../../../utils/env";
 
 const { USER } = CONVERSATION_USER_TYPES;
 
@@ -22,26 +23,25 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
   const hasConnectedRef = useRef(false);
   const pendingMessageRef = useRef(null);
   const timeoutRef = useRef([]);
+
+  const commonFlowChatHistory = useAICreationSessionStore(state => state.commonFlowChatHistory);
+  const commonFlowIntroMessage = useAICreationSessionStore(state => state.commonFlowIntroMessage);
+  const profileId = useAICreationSessionStore(state => state.profileId);
+
+  const { getSession, getInitialSwitchChatHistory, getCommonFlowChatHistory, setCommonFlowChatHistory, setCommonFlowIntroMessage, setSession: setSessionStore } = useAICreationSessionStore.getState();
+
   const [textMessage, setTextMessage] = useState('');
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
-  const [introMessage, setIntroMessage] = useState(null);
   const [isLoadingIntro, setIsLoadingIntro] = useState(true);
   const { commonsNetworkReconnectionPopup } = useConfirmationPopup()
   const navigate = useNavigate()
 
   const handleScrollIntoViewRef = useRef(handleScrollIntoView);
+  
 
   useEffect(() => {
     handleScrollIntoViewRef.current = handleScrollIntoView;
   }, [handleScrollIntoView]);
-
-  const localChatHistory = useAICreationSessionStore.getState().getCommonFlowChatHistory();
-
-  const [commonFlowChatHistory, setCommonFlowChatHistory] = useState(
-    localChatHistory?.length ? localChatHistory : []
-  );
-
-  const { profileId, getInitialSwitchChatHistory, getCommonFlowChatHistory, setCommonFlowChatHistory: setCommonFlowChatHistoryStore } = useAICreationSessionStore.getState();
 
   const [searchParams] = useSearchParams();
   const accessToken = sessionStorage.getItem('accToken');
@@ -53,7 +53,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
     try {
       const newSession = await getNewSessionID();
       if (newSession) {
-        useAICreationSessionStore.getState().setSession(newSession);
+        setSessionStore(newSession);
       }
     } catch (e) {
       console.error("Failed to refresh session for LCF", e);
@@ -72,8 +72,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
         if(message) {
           generateNewSession();
         }
-        setIntroMessage(message);
-        useAICreationSessionStore.getState().setCommonFlowIntroMessage(message);
+        setCommonFlowIntroMessage(message);
       } catch (error) {
         console.error('Error fetching intro message:', error);
       } finally {
@@ -81,42 +80,39 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
       }
     };
 
-    const storedIntroMessage = useAICreationSessionStore.getState().getCommonFlowIntroMessage();
-    if (storedIntroMessage) {
-      setIntroMessage(storedIntroMessage);
+    if (commonFlowIntroMessage) {
       setIsLoadingIntro(false);
     } else {
       fetchIntroMessage();
     }
   }, [flowType]);
 
-  function onFinalReconnectAttempt() {
+  const onFinalReconnectAttempt = useCallback(() => {
     function onYesButtonClick() {
       try {
         let chat_history = getCommonFlowChatHistory();
         if (Array.isArray(chat_history)) {
           chat_history = chat_history.filter((chat, index) => !(index == chat_history.length - 1 && chat.source === "user"))
         }
-        setCommonFlowChatHistoryStore(chat_history)
-
-        window.location.reload()
+        setCommonFlowChatHistory(chat_history)
+        window.location.reload();
       } catch (error) {
-        console.error("Error cleaning chat history before reload:", error)
-        window.location.reload()
+        console.error("Error cleaning chat history before reload:", error);
+        window.location.reload();
       }
     }
 
     function onNoButtonClick() {
       clearMitraSessionStorage()
       navigate("/")
-      window.location.reload()
+      window.location.reload();
     }
 
-    commonsNetworkReconnectionPopup(onYesButtonClick, onNoButtonClick)
-  }
+    commonsNetworkReconnectionPopup(onYesButtonClick, onNoButtonClick);
+  }, []);
 
   const onWebSocketOpen = useCallback(() => {
-    const currentSessionId = useAICreationSessionStore.getState().getSession();
+    const currentSessionId = getSession();
     sendSocketMessage({
       type: 'authenticate',
       sessionid: currentSessionId,
@@ -130,7 +126,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
     const initial_switch_chat_history = getInitialSwitchChatHistory();
     const common_flow_chat_history = getCommonFlowChatHistory();
 
-    if (!introMessage && Array.isArray(initial_switch_chat_history) && initial_switch_chat_history.length && initial_switch_chat_history[initial_switch_chat_history.length - 1]?.source === USER && Array.isArray(common_flow_chat_history) && !common_flow_chat_history.length) {
+    if (!commonFlowIntroMessage && Array.isArray(initial_switch_chat_history) && initial_switch_chat_history.length && initial_switch_chat_history[initial_switch_chat_history.length - 1]?.source === USER && Array.isArray(common_flow_chat_history) && !common_flow_chat_history.length) {
       const timeout_obj = setTimeout(() => {
         sendSocketMessage({
           text: initial_switch_chat_history[initial_switch_chat_history.length - 1]?.msg,
@@ -140,7 +136,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
       timeoutRef.current.push(timeout_obj);
     }
 
-    if (!introMessage && pendingMessageRef.current) {
+    if (!commonFlowIntroMessage && pendingMessageRef.current) {
       const timeout_obj = setTimeout(() => {
         sendSocketMessage({
           text: pendingMessageRef.current,
@@ -151,7 +147,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
       timeoutRef.current.push(timeout_obj);
     }
 
-  }, [profileId, accessToken, botRoute, storageFlow, introMessage]);
+  }, [profileId, accessToken, botRoute, storageFlow, commonFlowIntroMessage]);
 
   const onWebSocketMessage = useCallback(
     (event) => {
@@ -159,55 +155,48 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
       const message = data?.text;
 
       if (message?.source === 'bot') {
-        setCommonFlowChatHistory((prevChatHistory) => {
-          const lastIndex = prevChatHistory.length - 1;
-          const lastMessage = prevChatHistory[lastIndex];
+        const prevChatHistory = getCommonFlowChatHistory();
+        const lastIndex = prevChatHistory.length - 1;
+        const lastMessage = prevChatHistory[lastIndex];
 
-          if (lastIndex >= 0 && lastMessage?.source === 'bot') {
-            if (message?.msg) {
-              let updatedLastMessage = { ...lastMessage, msg: lastMessage.msg + message.msg };
-
-              if (Array.isArray(message?.extra_content?.sources) && message?.extra_content?.sources.length) {
-                updatedLastMessage["sources"] = message?.extra_content?.sources;
-              }
-
-              if(message?.extra_content?.file_url) {
-                updatedLastMessage["file_url"] = message?.extra_content?.file_url;
-              }
-
-              return [...prevChatHistory.slice(0, lastIndex), updatedLastMessage];
-            }
+        if (lastIndex >= 0 && lastMessage?.source === 'bot') {
+          if (message?.msg) {
+            let updatedLastMessage = { ...lastMessage, msg: lastMessage.msg + message.msg };
 
             if (Array.isArray(message?.extra_content?.sources) && message?.extra_content?.sources.length) {
-              let updatedLastMessage = { ...lastMessage };
               updatedLastMessage["sources"] = message?.extra_content?.sources;
-              return [...prevChatHistory.slice(0, lastIndex), updatedLastMessage];
             }
 
             if(message?.extra_content?.file_url) {
-              let updatedLastMessage = { ...lastMessage, file_url: message?.extra_content?.file_url };
-              return [...prevChatHistory.slice(0, lastIndex), updatedLastMessage];
+              updatedLastMessage["file_url"] = message?.extra_content?.file_url;
             }
-
-            return prevChatHistory;
-          } else {
-            const updatedMessage = {
-              msg: message?.msg || '',
-              source: 'bot',
-              updated_at: Date.now(),
-            }
-            if (Array.isArray(message?.extra_content?.sources) && message?.extra_content?.sources.length) {
-              updatedMessage["sources"] = message?.extra_content?.sources;
-            }
-            if(message?.extra_content?.file_url) {
-              updatedMessage["file_url"] = message?.extra_content?.file_url;
-            }
-            return [
-              ...prevChatHistory,
-              updatedMessage,
-            ];
+            setCommonFlowChatHistory([...prevChatHistory.slice(0, lastIndex), updatedLastMessage]);
           }
-        });
+          
+          if (Array.isArray(message?.extra_content?.sources) && message?.extra_content?.sources.length) {
+            let updatedLastMessage = { ...lastMessage };
+            updatedLastMessage["sources"] = message?.extra_content?.sources;
+            setCommonFlowChatHistory([...prevChatHistory.slice(0, lastIndex), updatedLastMessage]);
+          }
+
+          if(message?.extra_content?.file_url) {
+            let updatedLastMessage = { ...lastMessage, file_url: message?.extra_content?.file_url };
+            setCommonFlowChatHistory([...prevChatHistory.slice(0, lastIndex), updatedLastMessage]);
+          }
+        } else {
+          const updatedMessage = {
+            msg: message?.msg || '',
+            source: 'bot',
+            updated_at: Date.now(),
+          }
+          if (Array.isArray(message?.extra_content?.sources) && message?.extra_content?.sources.length) {
+            updatedMessage["sources"] = message?.extra_content?.sources;
+          }
+          if(message?.extra_content?.file_url) {
+            updatedMessage["file_url"] = message?.extra_content?.file_url;
+          }
+          setCommonFlowChatHistory([...prevChatHistory, updatedMessage]);
+        }
 
         if (message?.finish_reason === 'stop') {
           setIsWaitingForBot(false);
@@ -218,10 +207,6 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
     },
     []
   );
-
-  useEffect(() => {
-    useAICreationSessionStore.getState().setCommonFlowChatHistory(commonFlowChatHistory);
-  }, [commonFlowChatHistory]);
 
   const {
     sendMessage: sendSocketMessage,
@@ -237,9 +222,10 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
     {
       onOpen: onWebSocketOpen,
       onMessage: onWebSocketMessage,
+      onFinalReconnectAttempt,
       autoConnect: false,
-      reconnect: false,
-      onFinalReconnectAttempt
+      reconnect: true,
+      reconnectAttempts: env.WEBSOCKET_RETRY_NUM(),
     }
   );
 
@@ -275,7 +261,7 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
       updated_at: Date.now(),
     };
 
-    setCommonFlowChatHistory((prev) => [...prev, newMessage]);
+    setCommonFlowChatHistory([...commonFlowChatHistory, newMessage]);
     setIsWaitingForBot(true);
 
     if (!hasConnectedRef.current) {
@@ -301,8 +287,8 @@ const CommonFlow = ({ flowType, handleScrollIntoView }) => {
         <LoadingChat />
       ) : (
         <>
-          {introMessage && (
-            <BotMessage primaryMessage={introMessage} showChatStyle />
+          {commonFlowIntroMessage && (
+            <BotMessage primaryMessage={commonFlowIntroMessage} showChatStyle />
           )}
           
             {commonFlowChatHistory.length > 0 && (

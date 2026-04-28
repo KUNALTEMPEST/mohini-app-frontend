@@ -1006,7 +1006,7 @@ const DynamicVoiceChat = ({ type = "" }) => {
         stopAllAudio()
         isIntroPlayed.current = false
         // setIsLoading(true)
-        setIntroMessage(null)
+        // setIntroMessage(null)
         setChatHistory([])
         setSentences([])
         setLangProgress("IN_PROGRESS")
@@ -1261,6 +1261,20 @@ const DynamicVoiceChat = ({ type = "" }) => {
    * * Display Popup for the flows where end story api is not being called
    */
   useEffect(() => {
+
+    let survey_title = "PPsCompletionMessage"
+
+    const paramsMap = {
+      [sessionFlowName.ShikshaSamvad]: "shiksha_samvad_", 
+      [sessionFlowName.DelhiShikshaSamvad]: "delhi_shiksha_",
+      [sessionFlowName.OdishaYouth]: "odisha_youth_",
+      [sessionFlowName.OdishaYouthAI]: "odisha_youth_"
+    }
+
+    if (paramsMap[storageFlow]) {
+      survey_title = paramsMap[storageFlow] + survey_title
+    }
+
     const isLastMessageFromBot = chatHistory.length > 0 && chatHistory[chatHistory.length - 1]?.source === "bot"
     if (storageFlow && flowInfo?.create_story === "none" && isStreamingComplete && stateMachineLength && strandStep >= stateMachineLength && isLastMessageFromBot) {
       Swal.fire({
@@ -1781,6 +1795,7 @@ const DynamicVoiceChat = ({ type = "" }) => {
 
   const navigateBack = () => {
     let rerouteUrl = previousUrl
+    const currentFlow = storageFlow
     stopAllAudio()
     if (accessToken) {
       console.log("clearing storage")
@@ -1796,7 +1811,11 @@ const DynamicVoiceChat = ({ type = "" }) => {
     if (rerouteUrl && rerouteUrl !== null && rerouteUrl !== undefined && rerouteUrl !== "") {
       window.location.href = rerouteUrl
     } else {
-      window.location.replace("https://www.google.com")
+      navigate({
+        pathname: ROUTES.SHIKSHALOKAM_HOME_PAGE,
+        search: currentFlow ? new URLSearchParams({ flow: currentFlow }).toString() : ''   
+      })
+      window.location.reload()
     }
   }
 
@@ -2293,7 +2312,11 @@ const DynamicVoiceChat = ({ type = "" }) => {
                     [sessionFlowName.ListeningActivity]: "la_",
                     [sessionFlowName.ParentPerceptionSurvey]: "pppi_",
                     [sessionFlowName.ShikshaSamvad]: "shiksha_samvad_",
-                    [sessionFlowName.DelhiShikshaSamvad]: "shiksha_samvad_"
+                    [sessionFlowName.DelhiShikshaSamvad]: "shiksha_samvad_",
+                    [sessionFlowName.StudyTeacherInterview]: "shiksha_samvad_",
+                    [sessionFlowName.OdishaYouth]: "shiksha_samvad_",
+                    [sessionFlowName.OdishaYouthAI]: "shiksha_samvad_",
+                    [sessionFlowName.TelanganaPTMPilot]: "shiksha_samvad_",
                   }
 
                   const prefix = prefixMap[storageFlow] || ""

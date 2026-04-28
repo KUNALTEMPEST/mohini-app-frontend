@@ -1,0 +1,12 @@
+{
+    "guestPopUpChanges": "<div class='text-class'>\n   ଆପଣ ଏହି ବାର୍ତ୍ତାଳାପକୁ ଛାଡିବାକୁ ନିଶ୍ଚିତ କି?\n    ଆପଣଙ୍କର ସମସ୍ତ ପ୍ରଗତି ହରାଇବ।\n</div>",
+    "popUpChanges": "<div class='text-class'>\n    ତୁମେ କିଛି ସମୟ ପାଇଁ ନିଷ୍କ୍ରିୟ ଅଛ।\n    ଆପଣ ଜାରି ରଖିବାକୁ ଚାହାଁନ୍ତି କି?\n</div>",
+    "confirmChanges": "ହଁ",
+    "denyButton": "ନା",
+    "PPsCompletionMessage": "<div class='text-class'>ଧନ୍ୟବାଦ! ଆପଣଙ୍କ ଉତ୍ତର ସଫଳତାର ସହ ରେକର୍ଡ କରାଯାଇଛି।</div>",
+    "PPsCompletionCTA": "ଅନ୍ୟ ଏକ ପ୍ରତିକ୍ରିୟା ଦାଖଲ କରନ୍ତୁ |",
+    "comfirmButton": "ହଁ",
+    "cancel": "ବାତିଲ୍ କରନ୍ତୁ |",
+    "ptmCompletionMessage": "<div class='text-class'>ଧନ୍ୟବାଦ! ଆପଣଙ୍କ ଉତ୍ତର ସଫଳତାର ସହ ଦାଖଲ କରାଯାଇଛି।</div>",
+    "ptmCompletionCTA": "ଅନ୍ୟ ଏକ ପ୍ରତିକ୍ରିୟା ଦାଖଲ କରନ୍ତୁ |"
+}
